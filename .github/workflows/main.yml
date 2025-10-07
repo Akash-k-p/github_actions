@@ -36,6 +36,7 @@ jobs:
         database = "${SNOWFLAKE_DATABASE}"
         schema = "${SNOWFLAKE_SCHEMA}"
         EOF
+        chmod 600 ~/.snowflake/config.toml
 
     - name: Download ONNX file from Snowflake Stage
       run: |
