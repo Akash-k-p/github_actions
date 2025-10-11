@@ -1,0 +1,122 @@
+name: Snowflake End-to-End Training + Register + Push to GitHub
+
+on:
+  workflow_dispatch:
+
+jobs:
+  train-register-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Install Snowflake CLI with ML plugin
+      - name: Install Snowflake CLI with ML plugin
+        run: |
+          pip install --upgrade "snowflake-cli-labs[ml]"
+          snow --version
+
+      # 3️⃣ Configure Snowflake credentials
+      - name: Configure Snowflake credentials
+        env:
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+        run: |
+          mkdir -p ~/.snowflake
+          cat <<EOF > ~/.snowflake/config.toml
+          [connections.default]
+          account = "${SNOWFLAKE_ACCOUNT}"
+          user = "${SNOWFLAKE_USER}"
+          password = "${SNOWFLAKE_PASSWORD}"
+          role = "${SNOWFLAKE_ROLE}"
+          warehouse = "${SNOWFLAKE_WAREHOUSE}"
+          database = "${SNOWFLAKE_DATABASE}"
+          schema = "${SNOWFLAKE_SCHEMA}"
+          EOF
+          chmod 600 ~/.snowflake/config.toml
+
+      # 4️⃣ Trigger ML training task
+      - name: Trigger ML training task
+        run: |
+          echo "🚀 Running training task in Snowflake..."
+          snow sql -q "USE WAREHOUSE MLOPS_WH;
+          USE DATABASE POWERCONSUMPTION;
+          USE SCHEMA PUBLIC;
+          EXECUTE TASK TASK_1_DATA_INGESTION;"
+
+      # 5️⃣ Wait and check task status
+      - name: Wait and check task status
+        run: |
+          echo "⏳ Waiting for task to complete..."
+          sleep 20
+          snow sql -q "USE DATABASE POWERCONSUMPTION;
+          USE SCHEMA PUBLIC;
+          SHOW TASKS LIKE 'TASK_1_DATA_INGESTION';" --format table
+
+      # 6️⃣ Identify latest model created by training
+      - name: Identify latest registered model
+        run: |
+          mkdir -p models
+          latest_model=$(snow sql -q "SHOW MODELS IN SCHEMA PUBLIC;" --format csv \
+            | grep POWER_CONSUMPTION_MODEL \
+            | sort -t',' -k1,1r \
+            | head -n1 \
+            | cut -d',' -f2 \
+            | tr -d '"')
+          if [ -z "$latest_model" ]; then
+            echo "❌ No models found in registry!"
+            exit 1
+          fi
+          echo "✅ Latest model detected: $latest_model"
+          echo "LATEST_MODEL=$latest_model" >> $GITHUB_ENV
+
+      # 7️⃣ Export model to ONNX format
+      - name: Export model as ONNX
+        run: |
+          mkdir -p staged_models
+          snow ml model export "$LATEST_MODEL" --file-format onnx --output-dir ./staged_models
+          echo "✅ Model exported successfully:"
+          ls -lh staged_models/
+
+      # 8️⃣ Register a new version of the model in Snowflake Model Registry
+      - name: Register new version in Model Registry
+        run: |
+          echo "🧩 Registering a new version of $LATEST_MODEL in the model registry..."
+          snow ml model register --name "$LATEST_MODEL" --path ./staged_models/*.onnx --overwrite
+          echo "✅ Model successfully registered."
+
+      # 9️⃣ Stage the exported ONNX file in Snowflake
+      - name: Stage the model in Snowflake
+        run: |
+          snow sql -q "PUT file://staged_models/*.onnx @MY_ONNX_STAGE OVERWRITE = TRUE;"
+          echo "✅ Model staged successfully at @MY_ONNX_STAGE"
+
+      # 🔟 Push the model file to GitHub repo
+      - name: Commit & push model to GitHub
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add staged_models/*.onnx
+          git commit -m "🤖 New ONNX model trained, registered, and staged from Snowflake"
+          git push || echo "No new changes to push."
+
+      # 1️⃣1️⃣ Upload model as GitHub artifact (optional)
+      - name: Upload model as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: exported-onnx-model
+          path: staged_models/
+          retention-days: 7
+
+      # ✅ Summary
+      - name: Summary
+        run: |
+          echo "✅ End-to-end Snowflake pipeline completed!"
+          echo "✅ Model trained, registered, staged, and pushed to GitHub."
