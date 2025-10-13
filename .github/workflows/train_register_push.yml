@@ -46,7 +46,7 @@ jobs:
       - name: Trigger ML training task
         run: |
           echo "🚀 Running training task in Snowflake..."
-          snow sql -q "USE WAREHOUSE MLOPS_WH;
+          snow sql -q "USE WAREHOUSE ${SNOWFLAKE_WAREHOUSE};
           USE DATABASE POWERCONSUMPTION;
           USE SCHEMA PUBLIC;
           EXECUTE TASK TASK_1_DATA_INGESTION;"
