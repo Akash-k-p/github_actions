@@ -21,13 +21,13 @@ jobs:
       # 3️⃣ Configure Snowflake credentials
       - name: Configure Snowflake credentials
         env:
-          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
-          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
-          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
-          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE }}
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT_M }}
+          SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER_M }}
+          SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD_M }}
+          SNOWFLAKE_ROLE: ${{ secrets.SNOWFLAKE_ROLE_M }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_M }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_M }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA_M }}
         run: |
           mkdir -p ~/.snowflake
           cat <<EOF > ~/.snowflake/config.toml
