@@ -54,9 +54,9 @@ jobs:
       # 4️⃣ Trigger ML pipeline
       - name: Trigger Snowflake ML pipeline
         env:
-          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE_M }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_M }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA_M }}
         run: |
           echo "🚀 Executing Snowflake ML pipeline..."
           snow sql -q "
@@ -103,8 +103,8 @@ jobs:
       # 6️⃣ List ONNX models in stage
       - name: List ONNX models in Snowflake stage
         env:
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_M }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA_M }}
         run: |
           echo "📜 Listing ONNX models..."
           snow sql -q "
@@ -116,8 +116,8 @@ jobs:
       # 7️⃣ Download newest ONNX model and push to GitHub
       - name: Download latest ONNX file and push to repo
         env:
-          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
-          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
+          SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE_M }}
+          SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA_M }}
         run: |
           echo "📥 Fetching latest ONNX file (time-aware sort)..."
           mkdir -p staged_models
