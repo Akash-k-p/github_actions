@@ -1,0 +1,57 @@
+name: Parameterized Release Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number for this release (e.g., v1.0.0)'
+        required: true
+        default: 'v0.1.0'
+      environment:
+        description: 'Target environment (dev/staging/prod)'
+        required: true
+        default: 'dev'
+      message:
+        description: 'Custom message for the release'
+        required: false
+        default: 'Automated release test'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Show input parameters
+        run: |
+          echo "Version: ${{ github.event.inputs.version }}"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Message: ${{ github.event.inputs.message }}"
+
+      - name: Create build artifact
+        run: |
+          mkdir -p output
+          echo "Release Version: ${{ github.event.inputs.version }}" > output/info.txt
+          echo "Environment: ${{ github.event.inputs.environment }}" >> output/info.txt
+          echo "Timestamp: $(date)" >> output/info.txt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: output/info.txt
+
+      - name: Create GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.event.inputs.version }}
+          name: "Release ${{ github.event.inputs.version }} (${{ github.event.inputs.environment }})"
+          body: |
+            ## Release Notes
+            Environment: ${{ github.event.inputs.environment }}
+            Message: ${{ github.event.inputs.message }}
+            Triggered by: ${{ github.actor }}
+          artifacts: output/info.txt
+          token: ${{ secrets.GITHUB_TOKEN }}
