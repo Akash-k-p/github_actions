@@ -16,6 +16,9 @@ on:
         required: false
         default: 'Automated release test'
 
+  repository_dispatch:
+    types: [trigger-release]
+
 jobs:
   build-and-release:
     runs-on: ubuntu-latest
@@ -24,17 +27,34 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Extract input values
+        id: inputs
+        run: |
+          # Support both workflow_dispatch and repository_dispatch inputs
+          if [ "${{ github.event_name }}" = "repository_dispatch" ]; then
+            VERSION="${{ github.event.client_payload.version }}"
+            ENVIRONMENT="${{ github.event.client_payload.environment }}"
+            MESSAGE="${{ github.event.client_payload.message }}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+            ENVIRONMENT="${{ github.event.inputs.environment }}"
+            MESSAGE="${{ github.event.inputs.message }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "environment=$ENVIRONMENT" >> $GITHUB_OUTPUT
+          echo "message=$MESSAGE" >> $GITHUB_OUTPUT
+
       - name: Show input parameters
         run: |
-          echo "Version: ${{ github.event.inputs.version }}"
-          echo "Environment: ${{ github.event.inputs.environment }}"
-          echo "Message: ${{ github.event.inputs.message }}"
+          echo "Version: ${{ steps.inputs.outputs.version }}"
+          echo "Environment: ${{ steps.inputs.outputs.environment }}"
+          echo "Message: ${{ steps.inputs.outputs.message }}"
 
       - name: Create build artifact
         run: |
           mkdir -p output
-          echo "Release Version: ${{ github.event.inputs.version }}" > output/info.txt
-          echo "Environment: ${{ github.event.inputs.environment }}" >> output/info.txt
+          echo "Release Version: ${{ steps.inputs.outputs.version }}" > output/info.txt
+          echo "Environment: ${{ steps.inputs.outputs.environment }}" >> output/info.txt
           echo "Timestamp: $(date)" >> output/info.txt
 
       - name: Upload artifact
@@ -46,12 +66,12 @@ jobs:
       - name: Create GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ github.event.inputs.version }}
-          name: "Release ${{ github.event.inputs.version }} (${{ github.event.inputs.environment }})"
+          tag: ${{ steps.inputs.outputs.version }}
+          name: "Release ${{ steps.inputs.outputs.version }} (${{ steps.inputs.outputs.environment }})"
           body: |
             ## Release Notes
-            Environment: ${{ github.event.inputs.environment }}
-            Message: ${{ github.event.inputs.message }}
+            Environment: ${{ steps.inputs.outputs.environment }}
+            Message: ${{ steps.inputs.outputs.message }}
             Triggered by: ${{ github.actor }}
           artifacts: output/info.txt
           token: ${{ secrets.GITHUB_TOKEN }}
